@@ -1,0 +1,60 @@
+Program.Sub.Preflight.Start
+v.Global.sCheckFile.Declare(String)
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+
+
+
+v.Local.sSQL.Declare(String)
+v.Local.sJob.Declare(String)
+v.Local.sSuffix.Declare(String)
+v.Local.iCount.Declare(Long)
+v.Local.iJobCount.Declare(Long,0)
+v.Local.sFinal.Declare(String)
+
+f.Intrinsic.String.Build("{0}\GCG_4613_Check.txt",v.caller.GlobalDir,v.global.sCheckFile)
+
+f.Intrinsic.Control.Try
+F.ODBC.connection!conx.openConnection(v.Ambient.PDSN,v.Ambient.PUser,v.Ambient.PPass)
+
+'f.Intrinsic.UI.Msgbox(v.Ambient.Date,date)
+
+'f.Intrinsic.date.ConvertDString(v.Ambient.Date,"MMDDYY",v.Local.sDate)
+'f.Intrinsic.UI.Msgbox(v.Local.sDate,date)
+v.Local.sSQL.Set("select JOB,SUFFIX from V_JOB_HEADER where date_closed = '1900-01-01'")
+f.Data.DataTable.CreateFromSQL("WO_tbl","conx",v.Local.sSQL)
+	
+	
+	
+f.intrinsic.Control.For(v.Local.iCount,0,v.datatable.WO_tbl.RowCount--,1)
+	v.local.sJob.Set(v.datatable.WO_tbl(v.Local.iCount).JOB!fieldval)
+	v.Local.sSuffix.Set(v.datatable.WO_tbl(v.Local.iCount).SUFFIX!fieldval)
+	Function.Global.APS.ScheduleJob(v.Local.sJob,v.Local.sSuffix,"F",v.Ambient.Date)
+	f.Intrinsic.Math.Add(v.Local.iJobCount,1,v.Local.iJobCount)
+f.Intrinsic.Control.Next(v.Local.iCount)
+f.Intrinsic.String.Build("{0} : {1} out of {2} Jobs have been successfully scheduled",v.Ambient.Now,v.Local.iJobCount,v.DataTable.WO_tbl.RowCount,v.Local.sFinal)
+f.Intrinsic.file.String2File(v.global.sCheckFile,v.Local.sFinal)
+
+f.Intrinsic.Control.CallSub(Pgm_UnLoad)
+f.Intrinsic.Control.catch
+f.Intrinsic.String.Build("{0} : {1} out of {2} Jobs have been successfully scheduled",v.Ambient.Now,v.Local.iJobCount,v.DataTable.WO_tbl.RowCount,v.Local.sFinal)
+f.Intrinsic.file.String2File(v.global.sCheckFile,v.Local.sFinal)
+f.Intrinsic.Control.CallSub(catching,"sub",v.Ambient.CurrentSubroutine,"errorno",v.Ambient.ErrorNumber,"errordesc",v.Ambient.ErrorDescription)
+f.Intrinsic.Control.EndTry
+
+
+Program.Sub.Main.End
+
+Program.Sub.catching.Start
+v.Local.sError.declare(string)
+Function.Intrinsic.String.Concat(v.Ambient.Now,": Project: GCG_4613_FwdSchd.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",v.Args.sub,V.Ambient.NewLine,"Error Occurred ",V.Args.errorno," with description ",V.args.errordesc,V.Local.sError)
+	f.Intrinsic.File.Append2FileNewLine(v.Global.sCheckFile,v.Local.sError)
+	f.Intrinsic.Debug.SetLA(v.Local.sError)
+f.Intrinsic.Control.CallSub(Pgm_UnLoad)
+Program.Sub.catching.End
+
+Program.Sub.Pgm_Unload.Start
+f.ODBC.Connection!conx.close
+f.Intrinsic.Control.End
+Program.Sub.Pgm_Unload.End
